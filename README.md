@@ -1,5 +1,6 @@
 # Media Monitor — rule-based social listening for n8n
 
+![CI](https://github.com/exekyute/n8n-media-monitor/actions/workflows/test.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![No LLM](https://img.shields.io/badge/no-LLM-2ea44f)
 ![n8n](https://img.shields.io/badge/n8n-self--hosted-4f4ad6)
