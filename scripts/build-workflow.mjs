@@ -1,12 +1,18 @@
 // Builds workflows/media-monitor.workflow.json from the lib + config + node
 // bodies defined below. Run: `node scripts/build-workflow.mjs`.
-// Keeping this so re-generating the workflow after editing the lib is an
-// easy one-liner instead of a hand-escaped JSON edit.
+// We keep this so re-generating the workflow after editing the lib is a
+// one-liner instead of a manual JSON edit.
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
+
+// Deterministic node ID from a name. Keeps `node build` reproducible so
+// `node build --check` can verify drift in CI without false positives.
+function nodeId(name) {
+  return createHash('sha1').update('media-monitor:' + name).digest('hex').slice(0, 36);
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -193,7 +199,7 @@ const nodes = [
     parameters: {
       rule: { interval: [{ field: 'hours', hoursInterval: 1 }] }
     },
-    id: randomUUID(),
+    id: nodeId('Schedule Trigger'),
     name: 'Schedule Trigger',
     type: 'n8n-nodes-base.scheduleTrigger',
     typeVersion: 1.2,
@@ -201,7 +207,7 @@ const nodes = [
   },
   {
     parameters: { mode: 'runOnceForAllItems', language: 'javaScript', jsCode: configBody },
-    id: randomUUID(),
+    id: nodeId('Config'),
     name: 'Config',
     type: 'n8n-nodes-base.code',
     typeVersion: 2,
@@ -209,7 +215,7 @@ const nodes = [
   },
   {
     parameters: { mode: 'runOnceForAllItems', language: 'javaScript', jsCode: feedUrlsCode },
-    id: randomUUID(),
+    id: nodeId('Feed URLs'),
     name: 'Feed URLs',
     type: 'n8n-nodes-base.code',
     typeVersion: 2,
@@ -220,7 +226,7 @@ const nodes = [
       url: '={{ $json.url }}',
       options: {}
     },
-    id: randomUUID(),
+    id: nodeId('RSS Read'),
     name: 'RSS Read',
     type: 'n8n-nodes-base.rssFeedRead',
     typeVersion: 1,
@@ -229,7 +235,7 @@ const nodes = [
   },
   {
     parameters: { mode: 'runOnceForAllItems', language: 'javaScript', jsCode: processCode },
-    id: randomUUID(),
+    id: nodeId('Process Articles'),
     name: 'Process Articles',
     type: 'n8n-nodes-base.code',
     typeVersion: 2,
@@ -237,7 +243,7 @@ const nodes = [
   },
   {
     parameters: { mode: 'runOnceForAllItems', language: 'javaScript', jsCode: buildDigestCode },
-    id: randomUUID(),
+    id: nodeId('Build Digest'),
     name: 'Build Digest',
     type: 'n8n-nodes-base.code',
     typeVersion: 2,
@@ -252,7 +258,7 @@ const nodes = [
       html: '={{ $json.html }}',
       options: {}
     },
-    id: randomUUID(),
+    id: nodeId('Send Email'),
     name: 'Send Email',
     type: 'n8n-nodes-base.emailSend',
     typeVersion: 2,
@@ -276,13 +282,29 @@ const workflow = {
   connections,
   active: false,
   settings: { executionOrder: 'v1' },
-  versionId: randomUUID(),
+  versionId: nodeId('versionId'),
   meta: { instanceId: 'media-monitor' },
   id: 'media-monitor',
   tags: []
 };
 
 const outPath = join(ROOT, 'workflows', 'media-monitor.workflow.json');
-mkdirSync(dirname(outPath), { recursive: true });
-writeFileSync(outPath, JSON.stringify(workflow, null, 2) + '\n', 'utf8');
-console.log('wrote', outPath, '(' + JSON.stringify(workflow).length + ' bytes)');
+const out = JSON.stringify(workflow, null, 2) + '\n';
+
+if (process.argv.includes('--check')) {
+  if (!existsSync(outPath)) {
+    console.error('check: ' + outPath + ' missing — run `node scripts/build-workflow.mjs` first');
+    process.exit(1);
+  }
+  const current = readFileSync(outPath, 'utf8');
+  if (current !== out) {
+    console.error('check: workflow JSON drifted from src/lib.mjs + examples/config.example.js');
+    console.error('       run `node scripts/build-workflow.mjs` and commit the result');
+    process.exit(1);
+  }
+  console.log('check: workflow JSON is in sync');
+} else {
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, out, 'utf8');
+  console.log('wrote', outPath, '(' + JSON.stringify(workflow).length + ' bytes)');
+}
