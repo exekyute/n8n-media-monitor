@@ -1,39 +1,50 @@
 # Media Monitor — rule-based social listening for n8n
 
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![No LLM](https://img.shields.io/badge/no-LLM-2ea44f)
+![n8n](https://img.shields.io/badge/n8n-self--hosted-4f4ad6)
+![Status](https://img.shields.io/badge/status-v1.1-blue)
+
+## 60-second quick start
+
+```sh
+git clone https://github.com/exekyute/n8n-media-monitor.git
+cd n8n-media-monitor
+node tests/selftest.mjs
+```
+
+Then in your self-hosted n8n:
+1. **Import from File** → pick `workflows/media-monitor.workflow.json`.
+2. Open the **Config** node → edit `feeds[]`, `topics[]`, `entities`, `digest.to/from`.
+3. Add SMTP credential on **Send Email**.
+4. Click **Execute Workflow** → confirm digest email in inbox.
+5. Click **Publish/Activate** → Schedule Trigger runs hourly from here on.
+
+Full details below.
+
+---
+
 A self-hosted **n8n** workflow that scans RSS/Atom feeds for topics relevant to
 your company (brand mentions, competitors, regulatory news), enriches every
-matching article with **relevance, sentiment, and entity tags**, and ships the
-result to two destinations:
+matching article with **relevance, sentiment, and entity tags**, and delivers
+an **HTML email digest** grouped by topic and sorted by relevance.
 
-1. **Google Sheets** — every match appended as an archive row.
-2. **HTML email digest** — grouped by topic, sorted by relevance.
-
-All intelligence is pure rule-based
+There is **no LLM** anywhere in the pipeline. All intelligence is pure rule-based
 JavaScript inside n8n Code nodes. That means:
 
 - **Deterministic.** Same input → same output. Easy to audit.
-- **Free at runtime.** No API keys beyond SMTP and Google Sheets.
+- **Free at runtime.** Only credential needed is SMTP for the digest email.
 - **Self-contained.** Cross-run dedup uses `$getWorkflowStaticData('global')`,
   so there is nothing to provision — no Redis, no database, no third party.
-- **Portable.** Import the JSON, paste your feeds, add credentials, done.
+- **Portable.** Import the JSON, paste your feeds, add SMTP, done.
 
 ---
 
 ## Node graph
 
 ```
-                              ┌─→ Google Sheets — Append   (archive)
-Schedule → Config → Feed URLs │
-   Trigger   (Code)   (Code)  │
-                      │       └─→ Build Digest → Send Email (digest)
-                      ▼            (Code)        (SMTP)
-                   RSS Read
-                  (per feed)
-                      │
-                      ▼
-              Process Articles
-                   (Code)
-                  the brain
+Schedule → Config → Feed URLs → RSS Read → Process Articles → Build Digest → Send Email
+ Trigger   (Code)    (Code)     (per feed)   (Code, brain)       (Code)        (SMTP)
 ```
 
 ![Workflow canvas](docs/workflow.png)
@@ -66,7 +77,6 @@ The workflow targets these n8n core node versions:
 | Schedule Trigger | `n8n-nodes-base.scheduleTrigger` | 1.2 |
 | Config / Feed URLs / Process Articles / Build Digest | `n8n-nodes-base.code` | 2 |
 | RSS Read | `n8n-nodes-base.rssFeedRead` | 1 |
-| Google Sheets — Append | `n8n-nodes-base.googleSheets` | 4 |
 | Send Email | `n8n-nodes-base.emailSend` | 2 |
 
 If your n8n is older you may need to drop the `typeVersion` on any flagged
@@ -93,15 +103,18 @@ not match inside `macro`.
 
 ## Credentials
 
-Two credentials, both set inside their nodes after import:
+One credential, set inside the node after import:
 
-1. **Send Email (SMTP)** — pick or create an SMTP credential.
-2. **Google Sheets — Append** — Google Sheets OAuth2 credential. Bind the
-   spreadsheet and sheet/tab in the node UI. Append mode is set to
-   `autoMapInputData`, so every field on the enriched article becomes a
-   column. Use the columns the workflow emits as your header row:
+1. **Send Email (SMTP)** — pick or create an SMTP credential (Gmail app password, Postmark, SES, Mailgun, etc.).
 
-   `title, link, source, publishedAt, summary, topics, entities, relevance, sentiment, sentimentScore, hash, scannedAt`
+> **Note on archiving:** earlier drafts of this workflow also appended every
+> match to a Google Sheets archive. That path was removed in v1.1 as
+> redundant — the HTML email digest already groups, scores, and timestamps
+> every match in your inbox, which is itself a searchable archive. Cutting
+> Sheets eliminated a second credential and a moving part. If you do want a
+> Sheets archive, add a Google Sheets node downstream of `Process Articles`
+> with `operation: append`, `mappingMode: autoMapInputData`, and the column
+> headers below.
 
 ---
 
@@ -154,8 +167,7 @@ re-published on another feed or re-sent with tracking parameters.
 ### Each article in every matching topic
 
 If an article matches `BrandMentions` **and** `RegulatoryNews`, it appears
-under both sections of the digest. The archive row stores the topics as a
-comma-separated string so a single Sheets row is enough.
+under both sections of the digest.
 
 ---
 
@@ -198,20 +210,15 @@ workflow JSON with the new Code-node bodies.
 ## Manual verification (after import)
 
 1. Edit the **Config** node — paste your feeds, topics, and entities.
-2. Add credentials on **Google Sheets — Append** and **Send Email**.
-3. Click **Execute Workflow**. Expect:
-   - Rows appear in your sheet.
-   - A digest email lands in your inbox grouped by topic.
-4. Click **Execute Workflow** again. Expect:
-   - No new sheet rows (every article is already in the seen-list).
-   - No empty email — `Process Articles` returns `[]`, so neither delivery
-     node fires.
-5. Activate the workflow. The Schedule Trigger now runs hourly (configurable
-   in the trigger UI).
+2. Add the SMTP credential on **Send Email**.
+3. Click **Execute Workflow**. Expect a digest email in your inbox grouped by topic.
+4. Activate the workflow. The Schedule Trigger runs hourly (configurable in
+   the trigger UI). Cross-run dedup only applies to scheduled runs — manual
+   `Execute Workflow` does not persist the seen-list between clicks.
 
 ---
 
-## Customizing
+## Customising
 
 - **Per-source weight** — drop a host into `scoring.sources`. e.g.
   `"yourindustryrag.example": 1.8`.
