@@ -36,7 +36,7 @@ Schedule → Config → Feed URLs │
                   the brain
 ```
 
-Screenshot placeholder: see [`docs/workflow.png`](docs/workflow.png).
+![Workflow canvas](docs/workflow.png)
 
 ---
 
