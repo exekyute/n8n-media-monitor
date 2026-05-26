@@ -236,26 +236,12 @@ const nodes = [
     position: [760, 0]
   },
   {
-    parameters: {
-      operation: 'append',
-      documentId: { __rl: true, value: '', mode: 'id' },
-      sheetName: { __rl: true, value: '', mode: 'id' },
-      columns: { mappingMode: 'autoMapInputData', value: {}, matchingColumns: [], schema: [] },
-      options: {}
-    },
-    id: randomUUID(),
-    name: 'Google Sheets — Append',
-    type: 'n8n-nodes-base.googleSheets',
-    typeVersion: 4,
-    position: [1020, -140]
-  },
-  {
     parameters: { mode: 'runOnceForAllItems', language: 'javaScript', jsCode: buildDigestCode },
     id: randomUUID(),
     name: 'Build Digest',
     type: 'n8n-nodes-base.code',
     typeVersion: 2,
-    position: [1020, 140]
+    position: [1020, 0]
   },
   {
     parameters: {
@@ -270,7 +256,7 @@ const nodes = [
     name: 'Send Email',
     type: 'n8n-nodes-base.emailSend',
     typeVersion: 2,
-    position: [1280, 140]
+    position: [1280, 0]
   }
 ];
 
@@ -279,12 +265,7 @@ const connections = {
   'Config':           { main: [[{ node: 'Feed URLs', type: 'main', index: 0 }]] },
   'Feed URLs':        { main: [[{ node: 'RSS Read', type: 'main', index: 0 }]] },
   'RSS Read':         { main: [[{ node: 'Process Articles', type: 'main', index: 0 }]] },
-  'Process Articles': {
-    main: [[
-      { node: 'Google Sheets — Append', type: 'main', index: 0 },
-      { node: 'Build Digest', type: 'main', index: 0 }
-    ]]
-  },
+  'Process Articles': { main: [[{ node: 'Build Digest', type: 'main', index: 0 }]] },
   'Build Digest':     { main: [[{ node: 'Send Email', type: 'main', index: 0 }]] }
 };
 
