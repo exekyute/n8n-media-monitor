@@ -1,3 +1,8 @@
+// media-monitor: pure rule-based functions for article enrichment.
+// No deps, no I/O. Same code is inlined into the n8n Code nodes so the
+// workflow JSON is self-contained, but importing this file lets the
+// self-test exercise the logic with plain `node`.
+
 const HTML_ENTITIES = {
   '&amp;': '&', '&lt;': '<', '&gt;': '>',
   '&quot;': '"', '&#39;': "'", '&apos;': "'", '&nbsp;': ' '
@@ -41,6 +46,29 @@ function hasMatch(haystack, term) {
   return termRegex(term).test(haystack);
 }
 
+/**
+ * Cut a summary at `n` characters on a word boundary and append an ellipsis.
+ * Used by the digest builder for tidy article previews.
+ * @param {string} text  - input string
+ * @param {number} [n=280] - max length before truncation
+ * @returns {string} truncated text, or original if already short enough
+ */
+export function truncateSummary(text, n = 280) {
+  const s = String(text ?? '');
+  if (s.length <= n) return s;
+  const cut = s.slice(0, n);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > n * 0.6 ? cut.slice(0, lastSpace) : cut) + '…';
+}
+
+/**
+ * Normalise a raw RSS/Atom item into a flat article shape.
+ * Strips HTML, picks the best content field, derives `source` from the link host,
+ * and parses `publishedAt` to ISO 8601.
+ * @param {object} raw - raw feed item (from n8n RSS Read node)
+ * @param {string} feedUrl - the feed URL (fallback for source host)
+ * @returns {{title:string, link:string, source:string, publishedAt:string, summary:string, contentText:string}}
+ */
 export function normalizeArticle(raw, feedUrl) {
   const title = stripHtml(raw?.title ?? '');
   const link = String(raw?.link ?? raw?.url ?? raw?.guid ?? '').trim();
@@ -59,6 +87,13 @@ export function normalizeArticle(raw, feedUrl) {
   return { title, link, source, publishedAt, summary, contentText };
 }
 
+/**
+ * Hash a URL to a short stable fingerprint for cross-run dedup.
+ * Lowercases, strips tracking query params (utm_*, gclid, fbclid, mc_cid, mc_eid),
+ * drops trailing slash and fragment, then djb2 → 32-bit hex.
+ * @param {string} link
+ * @returns {string} 8-char hex fingerprint, '0' for empty input
+ */
 export function hashLink(link) {
   if (!link) return '0';
   let normalized = String(link).trim().toLowerCase();
@@ -84,6 +119,13 @@ export function hashLink(link) {
   return (h >>> 0).toString(16);
 }
 
+/**
+ * Whole-word, case-insensitive boolean topic match.
+ * For each topic: ALL include[] terms must appear AND no exclude[] term may appear.
+ * @param {{title?:string, contentText?:string}} article
+ * @param {Array<{name:string, include:string[], exclude:string[]}>} topics
+ * @returns {string[]} names of topics matched, [] if none
+ */
 export function matchTopics(article, topics) {
   const hay = `${article.title ?? ''} ${article.contentText ?? ''}`;
   const matched = [];
@@ -100,6 +142,15 @@ export function matchTopics(article, topics) {
   return matched;
 }
 
+/**
+ * Compute a relevance score 0–100 from term frequency, source weight, recency.
+ * @param {{title?:string, contentText?:string, source?:string, publishedAt?:string}} article
+ * @param {string[]} topicsMatched - names of topics this article matched
+ * @param {object} scoring - { termWeight, sourceWeight, recencyWeight, recencyHalfLifeHours, sources }
+ * @param {Array<{name:string, include:string[]}>} allTopics
+ * @param {number} [now=Date.now()] - reference timestamp for recency math
+ * @returns {number} integer 0..100
+ */
 export function scoreRelevance(article, topicsMatched, scoring, allTopics, now = Date.now()) {
   if (!topicsMatched || topicsMatched.length === 0) return 0;
   const cfg = scoring ?? {};
@@ -133,6 +184,13 @@ export function scoreRelevance(article, topicsMatched, scoring, allTopics, now =
   return Math.max(0, Math.min(100, Math.round(total)));
 }
 
+/**
+ * AFINN-style sentiment. Sum lexicon[word] across whole-word tokens, normalise
+ * by sqrt(tokenCount) so long articles don't dominate.
+ * @param {{title?:string, contentText?:string}} article
+ * @param {Record<string, number>} lexicon - word → integer (typical −5..+5)
+ * @returns {{score:number, label:'positive'|'neutral'|'negative'}}
+ */
 export function scoreSentiment(article, lexicon) {
   const text = `${article.title ?? ''} ${article.contentText ?? ''}`.toLowerCase();
   const tokens = text.match(/[a-z][a-z'-]+/g) ?? [];
@@ -143,4 +201,26 @@ export function scoreSentiment(article, lexicon) {
     if (typeof v === 'number') raw += v;
   }
   const score = raw / Math.sqrt(tokens.length);
-  const rounded = Math.round(score * 100)
+  const rounded = Math.round(score * 100) / 100;
+  let label = 'neutral';
+  if (rounded >= 0.5) label = 'positive';
+  else if (rounded <= -0.5) label = 'negative';
+  return { score: rounded, label };
+}
+
+/**
+ * Tag entities by alias. Each label is attached at most once per article.
+ * @param {{title?:string, contentText?:string}} article
+ * @param {Record<string, string[]>} entities - label → aliases (whole-word, case-insensitive)
+ * @returns {string[]} unique labels matched
+ */
+export function tagEntities(article, entities) {
+  const hay = `${article.title ?? ''} ${article.contentText ?? ''}`;
+  const found = new Set();
+  for (const [label, aliases] of Object.entries(entities ?? {})) {
+    for (const alias of aliases ?? []) {
+      if (hasMatch(hay, alias)) { found.add(label); break; }
+    }
+  }
+  return [...found];
+}
