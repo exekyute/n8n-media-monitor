@@ -1,6 +1,6 @@
 // Smoke-test: extract the embedded jsCode from each Code node in the built
 // workflow JSON and execute it inside a minimal n8n shim. Catches any
-// regressions introduced by the inlining step in scripts/build-workflow.mjs
+// regressions introduced by the inlining step in scripts/build-workflow.mjs.
 
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
@@ -128,5 +128,37 @@ const emptyDigest = runCodeNode({
 });
 assert.equal(emptyDigest.length, 1);
 assert.ok(emptyDigest[0].json.html.includes('No new matches'));
+
+// Cross-listing: article matching two topics appears under BOTH headings.
+const crossListedArticle = {
+  json: {
+    title: 'Acme hit with new regulation',
+    link: 'https://example.com/acme-reg/1',
+    source: 'example.com',
+    publishedAt: '2026-05-25T10:00:00Z',
+    summary: 'Acme faces a new regulation on data handling.',
+    topics: 'BrandMentions, RegulatoryNews',
+    topicsList: ['BrandMentions', 'RegulatoryNews'],
+    entities: 'Acme Corp',
+    entitiesList: ['Acme Corp'],
+    relevance: 80,
+    sentiment: 'neutral',
+    sentimentScore: 0,
+    hash: 'deadbeef',
+    scannedAt: '2026-05-25T12:00:00Z'
+  }
+};
+const crossDigest = runCodeNode({
+  code: codeFor('Build Digest'),
+  items: [crossListedArticle],
+  contextItems: { Config: cfg },
+  staticData
+});
+const crossHtml = crossDigest[0].json.html;
+assert.ok(crossHtml.includes('BrandMentions'), 'BrandMentions heading missing');
+assert.ok(crossHtml.includes('RegulatoryNews'), 'RegulatoryNews heading missing');
+// Article link should appear twice (once per topic section).
+const linkOccurrences = (crossHtml.match(/example\.com\/acme-reg\/1/g) || []).length;
+assert.ok(linkOccurrences >= 2, `expected ≥2 occurrences of the link, got ${linkOccurrences}`);
 
 console.log('\nOK smoke-workflow: Process Articles + Build Digest behave correctly inside the shim');
