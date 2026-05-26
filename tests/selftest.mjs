@@ -1,12 +1,13 @@
 // Self-test for media-monitor lib. Run: `node tests/selftest.mjs`
 // Asserts boolean topic match, exclude suppression, whole-word boundaries,
 // relevance bands, sentiment labels, entity tagging, normalization, link
-// hashing, and dedup via a Set (mimics n8n static-data seen-list)
+// hashing, and dedup via a Set (mimics n8n static-data seen-list).
 
 import assert from 'node:assert/strict';
 import {
   normalizeArticle, hashLink, matchTopics,
-  scoreRelevance, scoreSentiment, tagEntities
+  scoreRelevance, scoreSentiment, tagEntities,
+  truncateSummary
 } from '../src/lib.mjs';
 
 const topics = [
@@ -143,6 +144,28 @@ t('dedup: Set-based seen-list suppresses repeat', () => {
   const secondPass = !seen.has(h2);
   assert.equal(firstPass, true);
   assert.equal(secondPass, false);
+});
+
+// 9. Edge case: empty article doesn't crash
+t('matchTopics: empty article returns []', () => {
+  assert.deepEqual(matchTopics({ title: '', contentText: '' }, topics), []);
+});
+
+// 10. Title-only hit still matches
+t('matchTopics: title-only hit still matches', () => {
+  const a = { title: 'Acme news', contentText: '' };
+  assert.ok(matchTopics(a, topics).includes('BrandX'));
+});
+
+// 11. truncateSummary: respects word boundary + appends ellipsis
+t('truncateSummary: short text passes through unchanged', () => {
+  assert.equal(truncateSummary('hello world', 100), 'hello world');
+});
+t('truncateSummary: long text cuts at word boundary with ellipsis', () => {
+  const out = truncateSummary('the quick brown fox jumps over the lazy dog', 20);
+  assert.ok(out.endsWith('…'));
+  assert.ok(out.length <= 21);
+  assert.ok(!out.includes('lazy'), 'should have cut before "lazy"');
 });
 
 console.log(`\n${passed === total ? 'OK' : 'FAIL'} ${passed}/${total}`);
