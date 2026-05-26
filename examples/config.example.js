@@ -39,16 +39,16 @@ return [{
     // + recencyWeight * max(0, 1 - hoursOld / recencyHalfLifeHours)
     // ))
     scoring: {
-      termWeight: 6,
-      sourceWeight: 20,
-      recencyWeight: 30,
-      recencyHalfLifeHours: 48,
+      termWeight: 6,            // raise to ~12 if you want keyword density to dominate (good for very specific brand names)
+      sourceWeight: 20,         // raise if you trust a few outlets a lot more than the rest
+      recencyWeight: 30,        // lower to ~10 for slow-moving regulatory/industry feeds; raise for breaking-news monitoring
+      recencyHalfLifeHours: 48, // raise to 168 (1 week) for weekly digests; lower to 12 for "what happened overnight"
       sources: {
         "reuters.com": 1.5,
         "bbc.co.uk":   1.4,
         "techcrunch.com": 1.2,
         "theverge.com": 1.1,
-        default: 1.0
+        default: 1.0           // anything not listed above gets this multiplier
       }
     },
 
@@ -88,3 +88,15 @@ return [{
     seenCap: 5000
   }
 }];
+
+// ---- Starter-pack topics (uncomment and rename to use) ----------------------
+// Drop any of these into topics[] above. Replace the placeholder terms with
+// your real brand/competitor/regulator/industry keywords.
+//
+//   { name: "OwnBrand",        include: ["yourbrand"],         exclude: [] },
+//   { name: "Top3Competitors", include: ["competitor"],        exclude: [] },
+//   { name: "RegulatoryRisk",  include: ["regulator"],         exclude: ["sports"] },
+//   { name: "IndustryGeneral", include: ["fintech"],           exclude: ["crypto"] },
+//   { name: "Tourism",         include: ["tourism"],           exclude: [] },
+//   { name: "Hospitality",     include: ["hotel"],             exclude: ["hotel california"] },
+//   { name: "Cruise",          include: ["cruise"],            exclude: ["tom cruise", "cruise missile"] },
