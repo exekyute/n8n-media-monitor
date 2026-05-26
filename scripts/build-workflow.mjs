@@ -211,7 +211,9 @@ const nodes = [
     name: 'Config',
     type: 'n8n-nodes-base.code',
     typeVersion: 2,
-    position: [40, 0]
+    position: [40, 0],
+    notes: 'Edit feeds[], topics[], entities, lexicon, scoring, digest, seenCap.\nSee README §Configure and examples/config.example.js.',
+    notesInFlow: true
   },
   {
     parameters: { mode: 'runOnceForAllItems', language: 'javaScript', jsCode: feedUrlsCode },
@@ -239,7 +241,9 @@ const nodes = [
     name: 'Process Articles',
     type: 'n8n-nodes-base.code',
     typeVersion: 2,
-    position: [760, 0]
+    position: [760, 0],
+    notes: 'The brain. Rule-based enrichment — topic match, relevance, sentiment, entities, dedup.\nPure functions inlined from src/lib.mjs. Reads $("Config").first().json + workflow static data.',
+    notesInFlow: true
   },
   {
     parameters: { mode: 'runOnceForAllItems', language: 'javaScript', jsCode: buildDigestCode },
