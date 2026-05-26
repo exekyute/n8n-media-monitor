@@ -9,6 +9,7 @@
   "repository": "github:exekyute/n8n-media-monitor",
   "scripts": {
     "test": "node tests/selftest.mjs && node tests/smoke-workflow.mjs",
-    "build": "node scripts/build-workflow.mjs"
+    "build": "node scripts/build-workflow.mjs",
+    "check": "node scripts/build-workflow.mjs --check"
   }
 }
