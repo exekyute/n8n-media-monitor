@@ -1,4 +1,4 @@
-# Media Monitor — rule-based social listening for n8n
+# Media Monitor, rule-based social listening for n8n
 
 ![CI](https://github.com/exekyute/n8n-media-monitor/actions/workflows/test.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
@@ -36,7 +36,7 @@ JavaScript inside n8n Code nodes. That means:
 - **Deterministic.** Same input → same output. Easy to audit.
 - **Free at runtime.** Only credential needed is SMTP for the digest email.
 - **Self-contained.** Cross-run dedup uses `$getWorkflowStaticData('global')`,
-  so there is nothing to provision — no Redis, no database, no third party.
+  so there is nothing to provision, no Redis, no database, no third party.
 - **Portable.** Import the JSON, paste your feeds, add SMTP, done.
 
 ---
@@ -56,12 +56,12 @@ Schedule → Config → Feed URLs → RSS Read → Process Articles → Build Di
 
 | Path | What it is |
 |------|-----------|
-| `workflows/media-monitor.workflow.json` | Importable n8n workflow. **Authoritative artifact.** Code-node bodies are embedded — no external requires at runtime. |
+| `workflows/media-monitor.workflow.json` | Importable n8n workflow. **Authoritative artifact.** Code-node bodies are embedded, no external requires at runtime. |
 | `src/lib.mjs` | Readable, unit-testable copies of every pure function the workflow uses (`normalizeArticle`, `hashLink`, `matchTopics`, `scoreRelevance`, `scoreSentiment`, `tagEntities`). |
 | `tests/selftest.mjs` | Node-only self-test. No n8n needed. Asserts matching, scoring, sentiment, normalization, hashing, dedup. |
 | `examples/config.example.js` | Realistic `Config` Code-node body with 3 named topics, scoring weights, starter lexicon, entity dictionary. |
 | `scripts/build-workflow.mjs` | Re-generates the workflow JSON from `src/lib.mjs` + `examples/config.example.js`. Run after editing the lib. |
-| `docs/workflow.png` | Screenshot placeholder. Replace after import. |
+| `docs/workflow.png` | Screenshot of the workflow canvas after import. |
 
 ---
 
@@ -69,7 +69,7 @@ Schedule → Config → Feed URLs → RSS Read → Process Articles → Build Di
 
 1. Open n8n → **Workflows** → **Import from File**.
 2. Pick `workflows/media-monitor.workflow.json`.
-3. The workflow imports inactive. Don't activate yet — configure first.
+3. The workflow imports inactive. Don't activate yet, configure first.
 
 The workflow targets these n8n core node versions:
 
@@ -91,11 +91,11 @@ Open the **Config** node and edit the returned object. The shape is documented
 inline in [`examples/config.example.js`](examples/config.example.js). At a
 minimum, edit:
 
-- `feeds[]` — your RSS/Atom URLs.
-- `topics[]` — named topics with `include` (boolean AND) and `exclude`
+- `feeds[]`: your RSS/Atom URLs.
+- `topics[]`: named topics with `include` (boolean AND) and `exclude`
   (any-match suppresses). An article must match at least one topic to survive.
-- `entities` — label → list of aliases for entity tagging.
-- `digest.to` / `digest.from` — email addresses.
+- `entities`: label → list of aliases for entity tagging.
+- `digest.to` / `digest.from`: email addresses.
 
 Topic match is **whole-word, case-insensitive**, so `include: ["mac"]` will
 not match inside `macro`.
@@ -106,11 +106,11 @@ not match inside `macro`.
 
 One credential, set inside the node after import:
 
-1. **Send Email (SMTP)** — pick or create an SMTP credential (Gmail app password, Postmark, SES, Mailgun, etc.).
+1. **Send Email (SMTP)**: pick or create an SMTP credential (Gmail app password, Postmark, SES, Mailgun, etc.).
 
 > **Note on archiving:** earlier drafts of this workflow also appended every
 > match to a Google Sheets archive. That path was removed in v1.1 as
-> redundant — the HTML email digest already groups, scores, and timestamps
+> redundant, the HTML email digest already groups, scores, and timestamps
 > every match in your inbox, which is itself a searchable archive. Cutting
 > Sheets eliminated a second credential and a moving part. If you do want a
 > Sheets archive, add a Google Sheets node downstream of `Process Articles`
@@ -210,41 +210,41 @@ workflow JSON with the new Code-node bodies.
 
 ## Manual verification (after import)
 
-1. Edit the **Config** node — paste your feeds, topics, and entities.
+1. Edit the **Config** node, paste your feeds, topics, and entities.
 2. Add the SMTP credential on **Send Email**.
 3. Click **Execute Workflow**. Expect a digest email in your inbox grouped by topic.
 4. Activate the workflow. The Schedule Trigger runs hourly (configurable in
-   the trigger UI). Cross-run dedup only applies to scheduled runs — manual
+   the trigger UI). Cross-run dedup only applies to scheduled runs, manual
    `Execute Workflow` does not persist the seen-list between clicks.
 
 ---
 
 ## Customising
 
-- **Per-source weight** — drop a host into `scoring.sources`. e.g.
+- **Per-source weight**: drop a host into `scoring.sources`. e.g.
   `"yourindustryrag.example": 1.8`.
-- **New topic** — append to `topics[]`. Each topic is independent.
-- **New entity** — add a label to `entities` with its alias list. Aliases are
+- **New topic**: append to `topics[]`. Each topic is independent.
+- **New entity**: add a label to `entities` with its alias list. Aliases are
   whole-word and case-insensitive.
-- **New sentiment word** — add to `lexicon` with an integer score
+- **New sentiment word**: add to `lexicon` with an integer score
   (positive/negative, conventionally −5..+5).
-- **Different schedule** — edit the Schedule Trigger node (every N minutes,
+- **Different schedule**: edit the Schedule Trigger node (every N minutes,
   hours, days, or cron).
 
 ---
 
 ## Troubleshooting
 
-- **No email** — `Process Articles` only emits items if at least one article
+- **No email**: `Process Articles` only emits items if at least one article
   passed match + dedup. An empty run is normal; activate the workflow and
   wait for a real hit, or temporarily widen a topic.
-- **One feed errors out** — RSS Read is set to `continueRegularOutput`, so
+- **One feed errors out**: RSS Read is set to `continueRegularOutput`, so
   other feeds still flow. Open the node's execution log to see the failing
   URL.
-- **Digest shows the same article twice** — it matched two topics. That's by
+- **Digest shows the same article twice**: it matched two topics. That's by
   design; each topic section is independent. If you don't want this, edit
   `Build Digest` to keep only the first topic per article.
-- **Static data lost** — `$getWorkflowStaticData('global')` persists per
+- **Static data lost**: `$getWorkflowStaticData('global')` persists per
   workflow on the n8n instance. If you re-import the workflow, the seen-list
   starts empty. The first run after re-import will look like a flood.
 
@@ -252,4 +252,4 @@ workflow JSON with the new Code-node bodies.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
