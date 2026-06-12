@@ -1,3 +1,14 @@
+// examples/config.example.js
+//
+// Copy the body of this file (everything inside the `return [...]` block)
+// into the **Config** Code node in n8n. It must run with mode
+// "Run Once for All Items" and JavaScript language.
+//
+// All downstream nodes read this config via:
+//   const cfg = $('Config').first().json;
+//
+// Edit feeds[], topics[], entities, lexicon, scoring, and digest to taste.
+
 return [{
   json: {
     // ---- 1. Sources ----------------------------------------------------------
@@ -78,8 +89,17 @@ return [{
       subjectPrefix: "[MediaMonitor]",
       minRelevance: 30,   // hide low-score noise from the email
       maxItems: 50,       // hard cap across all topics
-      to: "ops@example.com",
-      from: "monitor@example.com"
+      to: "ops@example.com",      // full-digest recipient; set to "" to send routed digests only
+      from: "monitor@example.com",
+      sendEmpty: false,   // true = also email runs with zero matches ("No new matches")
+
+      // Routes: one EXTRA email per entry, filtered to the listed topics.
+      // Lets a comms desk send each client department only its own coverage.
+      // An article matching two routed topics appears in both emails.
+      routes: [
+        // { name: "Environment Dept", to: "env-comms@example.gov",   topics: ["RegulatoryNews"] },
+        // { name: "Trade Dept",       to: "trade-comms@example.gov", topics: ["Competitors"] }
+      ]
     },
 
     // ---- 7. Dedup --------------------------------------------------------

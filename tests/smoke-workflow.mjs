@@ -104,7 +104,7 @@ const secondPass = runCodeNode({
 });
 assert.equal(secondPass.length, 0, 'second pass dedup drops everything');
 
-// Build Digest — feed enriched in.
+// Build Digest: feed enriched in.
 const digest = runCodeNode({
   code: codeFor('Build Digest'),
   items: enriched,
@@ -118,6 +118,7 @@ assert.ok(out.html.includes('<h1'), 'html has h1');
 assert.ok(out.html.includes('BrandMentions') || out.html.includes('RegulatoryNews'), 'topic heading present');
 assert.equal(out.to, cfg.digest.to);
 assert.equal(out.from, cfg.digest.from);
+assert.equal(out.total, 2, 'total counts the unique articles in the digest');
 
 // Empty digest path
 const emptyDigest = runCodeNode({
@@ -128,6 +129,41 @@ const emptyDigest = runCodeNode({
 });
 assert.equal(emptyDigest.length, 1);
 assert.ok(emptyDigest[0].json.html.includes('No new matches'));
+assert.equal(emptyDigest[0].json.total, 0, 'empty digest carries total 0 for Has Matches?');
+
+// Routed digests: one filtered email per route, plus the full digest.
+const routedCfg = JSON.parse(JSON.stringify(cfg));
+routedCfg.digest.routes = [
+  { name: 'Environment Dept', to: 'env-comms@example.gov', topics: ['RegulatoryNews'] }
+];
+const routed = runCodeNode({
+  code: codeFor('Build Digest'),
+  items: enriched,
+  contextItems: { Config: routedCfg },
+  staticData
+});
+assert.equal(routed.length, 2, 'full digest + one routed digest');
+const fullOut = routed.find(i => i.json.to === routedCfg.digest.to);
+const routeOut = routed.find(i => i.json.to === 'env-comms@example.gov');
+assert.ok(fullOut, 'full digest still goes to digest.to');
+assert.ok(routeOut, 'routed digest goes to the route address');
+assert.ok(routeOut.json.subject.includes('Environment Dept'), 'route subject names the department');
+assert.ok(routeOut.json.html.includes('RegulatoryNews'), 'route html contains its topic');
+assert.ok(!routeOut.json.html.includes('BrandMentions'), 'route html excludes other topics');
+assert.equal(routeOut.json.total, 1, 'route total counts only its topics');
+assert.equal(fullOut.json.total, 2, 'full digest total unchanged by routing');
+
+// Routes only: blank digest.to suppresses the full digest.
+const routesOnlyCfg = JSON.parse(JSON.stringify(routedCfg));
+routesOnlyCfg.digest.to = '';
+const routesOnly = runCodeNode({
+  code: codeFor('Build Digest'),
+  items: enriched,
+  contextItems: { Config: routesOnlyCfg },
+  staticData
+});
+assert.equal(routesOnly.length, 1, 'routes-only config emits routed digests only');
+assert.equal(routesOnly[0].json.to, 'env-comms@example.gov');
 
 // Cross-listing: article matching two topics appears under BOTH headings.
 const crossListedArticle = {

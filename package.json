@@ -1,9 +1,9 @@
 {
   "name": "n8n-media-monitor",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
-  "description": "Rule-based social listening for self-hosted n8n. No LLM. RSS in, HTML email digest out.",
+  "description": "Rule-based social listening for self-hosted n8n. RSS in, routed HTML email digests out.",
   "license": "MIT",
   "author": "Kevin Yu (github.com/exekyute)",
   "repository": "github:exekyute/n8n-media-monitor",
