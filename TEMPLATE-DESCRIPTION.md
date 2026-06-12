@@ -1,4 +1,4 @@
-Scan the news feeds that matter to your organisation and send each team a scored HTML digest of only its own coverage, for the cost of a single SMTP credential.
+Scan the news feeds that matter to your organization and send each team a scored HTML digest of only its own coverage, for the cost of a single SMTP credential.
 
 ## Who's it for
 

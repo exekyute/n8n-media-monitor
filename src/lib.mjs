@@ -62,7 +62,7 @@ export function truncateSummary(text, n = 280) {
 }
 
 /**
- * Normalise a raw RSS/Atom item into a flat article shape.
+ * Normalize a raw RSS/Atom item into a flat article shape.
  * Strips HTML, picks the best content field, derives `source` from the link host,
  * and parses `publishedAt` to ISO 8601.
  * @param {object} raw - raw feed item (from n8n RSS Read node)
@@ -185,7 +185,7 @@ export function scoreRelevance(article, topicsMatched, scoring, allTopics, now =
 }
 
 /**
- * AFINN-style sentiment. Sum lexicon[word] across whole-word tokens, normalise
+ * AFINN-style sentiment. Sum lexicon[word] across whole-word tokens, normalize
  * by sqrt(tokenCount) so long articles don't dominate.
  * @param {{title?:string, contentText?:string}} article
  * @param {Record<string, number>} lexicon - word → integer (typical −5..+5)

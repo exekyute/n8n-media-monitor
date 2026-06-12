@@ -64,7 +64,7 @@ return [{
     },
 
     // ---- 4. Sentiment lexicon -----------------------------------------------
-    // AFINN-style word → integer score (typical −5..+5). Sum is normalised by
+    // AFINN-style word → integer score (typical −5..+5). Sum is normalized by
     // sqrt(tokenCount) so long articles don't dominate. Label thresholds:
     //   ≥ +0.5 → positive,  ≤ -0.5 → negative,  else neutral.
     lexicon: {
