@@ -89,10 +89,10 @@ npm run build   # regenerates the workflow JSON after editing the lib
 
 ## Constraints
 
-- Self-hosted n8n only: the workflow uses Code nodes and workflow static data.
-- Targets current n8n core nodes (Schedule Trigger, Code, RSS Read, IF, Email Send, NoOp). On an older n8n, accept the one-click version fix offered on import.
-- Cross-run dedup is keyed on workflow static data, which persists per workflow on the instance. Re-importing the workflow resets the seen-list, so the first run after a re-import can look like a flood.
-- The seen-list only carries across scheduled runs; manual Execute Workflow clicks do not persist it between clicks.
+- **Runs on self-hosted n8n.** The enrichment lives in Code nodes (custom JavaScript), and the de-duplication memory uses workflow static data, a small storage area attached to the workflow. Both are available on a self-hosted instance but restricted on some n8n Cloud plans, so this template targets self-hosted.
+- **Each node is pinned to a version.** The exported workflow records the exact version of every node it uses (for example the IF node at 2.2). If your n8n is older, it will flag the mismatch when you import. *What to do:* click the one-click fix n8n offers, which adapts the node to the version you have, and carry on.
+- **De-duplication is stored inside this one workflow.** The "do not email the same article twice" memory (the seen-list) is held in that workflow's static data on your instance. A freshly imported copy starts with an empty memory, so its very first run treats everything currently in your feeds as new and can send one large digest. *What to do:* run that first execution manually at a quiet time, or temporarily raise `digest.minRelevance` so the opening batch is smaller. It settles from the second run onward.
+- **The seen-list only persists on scheduled runs, not manual test clicks.** When the schedule fires the active workflow, the memory is saved and carried forward. When you click Execute Workflow to test, it is not saved between clicks, so the same article can reappear while you experiment. *What to do:* treat repeats during manual testing as normal; real de-duplication begins once the workflow is active and running on its schedule.
 
 ## License
 
